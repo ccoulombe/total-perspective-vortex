@@ -54,9 +54,19 @@ class TPVCodeEvaluator(abc.ABC):
         )
 
     def evaluate_complex_property(self, prop: Any, context: Dict[str, Any]) -> Any:
+        from tpv.core.time_util import process_slurm_parameters
+        
+        def eval_and_process_time_formats(prop_name: str, prop_val: str, ctx: Dict[str, Any]) -> Any:
+            # Evaluate the f-string first
+            evaluated = self.eval_code_block(prop_val, ctx, as_f_string=True)
+            # Then process SLURM time formats if this looks like a parameter string
+            if isinstance(evaluated, str) and ("--time=" in evaluated or "nativeSpecification" in prop_name.lower()):
+                evaluated = process_slurm_parameters(evaluated)
+            return evaluated
+        
         return self.process_complex_property(
             "",
             prop,
             context,
-            lambda n, v, c: self.eval_code_block(v, c, as_f_string=True),
+            eval_and_process_time_formats,
         )
